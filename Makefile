@@ -1,21 +1,93 @@
+# Teensyduino Core Library
+# http://www.pjrc.com/teensy/
+# Copyright (c) 2019 PJRC.COM, LLC.
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# 1. The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# 2. If the Software is incorporated into a build system that allows
+# selection among a list of target devices, then similar target
+# devices manufactured by PJRC.COM must be included in the list of
+# target devices and selectable in the same manner.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Use these lines for Teensy 4.0
+MCU = IMXRT1062
+MCU_LD = imxrt1062.ld
+MCU_DEF = ARDUINO_TEENSY40
+
+# Use these lines for Teensy 4.1
+#MCU = IMXRT1062
+#MCU_LD = imxrt1062_t41.ld
+#MCU_DEF = ARDUINO_TEENSY41
+
+BUILDDIR = $(abspath $(CURDIR)/build)
+
 # The name of your project (used to name the compiled .hex file)
 TARGET = $(notdir $(CURDIR))
 
-# The teensy version to use, 30, 31, 35, 36, or LC
-TEENSY = 30
-
-# Set to 24000000, 48000000, or 96000000 to set CPU core speed
-TEENSY_CORE_SPEED = 48000000
-
-# Some libraries will require this to be defined
-# If you define this, you will break the default main.cpp
-#ARDUINO = 10600
-
 # configurable options
-OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+OPTIONS = -DF_CPU=600000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DUSING_MAKEFILE
+#
+# USB Type configuration:
+#   -DUSB_SERIAL
+#   -DUSB_DUAL_SERIAL
+#   -DUSB_TRIPLE_SERIAL
+#   -DUSB_KEYBOARDONLY
+#   -DUSB_TOUCHSCREEN
+#   -DUSB_HID_TOUCHSCREEN
+#   -DUSB_HID
+#   -DUSB_SERIAL_HID
+#   -DUSB_MIDI
+#   -DUSB_MIDI4
+#   -DUSB_MIDI16
+#   -DUSB_MIDI_SERIAL
+#   -DUSB_MIDI4_SERIAL
+#   -DUSB_MIDI16_SERIAL
+#   -DUSB_AUDIO
+#   -DUSB_MIDI_AUDIO_SERIAL
+#   -DUSB_MIDI16_AUDIO_SERIAL
+#   -DUSB_MTPDISK
+#   -DUSB_RAWHID
+#   -DUSB_FLIGHTSIM
+#   -DUSB_FLIGHTSIM_JOYSTICK
 
-# directory to build in
-BUILDDIR = $(abspath $(CURDIR)/build)
+#************************************************************************
+# Settings below this point usually do not need to be edited
+#************************************************************************
+
+# options needed by many Arduino libraries to configure for Teensy model
+OPTIONS += -D__$(MCU)__ -DARDUINO=10813 -DTEENSYDUINO=154 -D$(MCU_DEF)
+
+# for Cortex M7 with single & double precision FPU
+CPUOPTIONS = -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16 -mthumb
+
+# use this for a smaller, no-float printf
+#SPECS = --specs=nano.specs
+
+# Other Makefiles and project templates for Teensy
+#
+# https://forum.pjrc.com/threads/57251?p=213332&viewfull=1#post213332
+# https://github.com/apmorton/teensy-template
+# https://github.com/xxxajk/Arduino_Makefile_master
+# https://github.com/JonHylands/uCee
+
 
 #************************************************************************
 # Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
@@ -26,83 +98,53 @@ BUILDDIR = $(abspath $(CURDIR)/build)
 # path location for Teensy Loader, teensy_post_compile and teensy_reboot
 TOOLSPATH = $(CURDIR)/tools
 
-ifeq ($(OS),Windows_NT)
-    $(error What is Win Dose?)
-else
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Darwin)
-        TOOLSPATH = /Applications/Arduino.app/Contents/Java/hardware/tools/
-    endif
-endif
-
-# path location for Teensy 3 core
-COREPATH = teensy3
+# path location for Teensy 4 core
+COREPATH = teensy4
 
 # path location for Arduino libraries
 LIBRARYPATH = libraries
 
 # path location for the arm-none-eabi compiler
-COMPILERPATH = $(TOOLSPATH)/arm/bin
+# COMPILERPATH = $(TOOLSPATH)/arm/bin
+COMPILERPATH = /usr/bin
+
 
 #************************************************************************
 # Settings below this point usually do not need to be edited
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -g -Os -mthumb -ffunction-sections -fdata-sections -nostdlib -MMD $(OPTIONS) -DTEENSYDUINO=124 -DF_CPU=$(TEENSY_CORE_SPEED) -Isrc -I$(COREPATH)
+CPPFLAGS = -Wall -g -O2 $(CPUOPTIONS) -MMD $(OPTIONS) -Isrc -I$(COREPATH) -ffunction-sections -fdata-sections
 
 # compiler options for C++ only
-CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fpermissive -fno-rtti -Wno-error=narrowing
 
 # compiler options for C only
-CFLAGS =
+CFLAGS = -std=gnu99
+
+# linker script
+LD_PATH = $(COREPATH)/$(MCU_LD)
 
 # linker options
-LDFLAGS = -Os -Wl,--gc-sections -mthumb
+LDFLAGS = -Os -Wl,--gc-sections,--relax $(SPECS) $(CPUOPTIONS) -T$(LD_PATH)
 
 # additional libraries to link
+# LIBS = -larm_cortexM7lfsp_math -lm -lstdc++
 LIBS = -lm
 
-# compiler options specific to teensy version
-ifeq ($(TEENSY), 30)
-    CPPFLAGS += -D__MK20DX128__ -mcpu=cortex-m4
-    LDSCRIPT = $(COREPATH)/mk20dx128.ld
-    LDFLAGS += -mcpu=cortex-m4 -T$(LDSCRIPT)
-else ifeq ($(TEENSY), 31)
-    CPPFLAGS += -D__MK20DX256__ -mcpu=cortex-m4
-    LDSCRIPT = $(COREPATH)/mk20dx256.ld
-    LDFLAGS += -mcpu=cortex-m4 -T$(LDSCRIPT)
-else ifeq ($(TEENSY), LC)
-    CPPFLAGS += -D__MKL26Z64__ -mcpu=cortex-m0plus
-    LDSCRIPT = $(COREPATH)/mkl26z64.ld
-    LDFLAGS += -mcpu=cortex-m0plus -T$(LDSCRIPT)
-    LIBS += -larm_cortexM0l_math
-else ifeq ($(TEENSY), 35)
-    CPPFLAGS += -D__MK64FX512__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-    LDSCRIPT = $(COREPATH)/mk64fx512.ld
-    LDFLAGS += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -T$(LDSCRIPT)
-    LIBS += -larm_cortexM4lf_math
-else ifeq ($(TEENSY), 36)
-    CPPFLAGS += -D__MK66FX1M0__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-    LDSCRIPT = $(COREPATH)/mk66fx1m0.ld
-    LDFLAGS += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -T$(LDSCRIPT)
-    LIBS += -larm_cortexM4lf_math
-else
-    $(error Invalid setting for TEENSY)
-endif
-
-# set arduino define if given
-ifdef ARDUINO
-	CPPFLAGS += -DARDUINO=$(ARDUINO)
-else
-	CPPFLAGS += -DUSING_MAKEFILE
-endif
 
 # names for the compiler programs
-CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
-CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
-OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
-SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+CC = $(COMPILERPATH)/arm-none-eabi-gcc
+CXX = $(COMPILERPATH)/arm-none-eabi-g++
+OBJCOPY = $(COMPILERPATH)/arm-none-eabi-objcopy
+SIZE = $(COMPILERPATH)/arm-none-eabi-size
+
+# Old rules
+# # automatically create lists of the sources and objects
+# # TODO: this does not handle Arduino libraries yet...
+# C_FILES := $(wildcard *.c)
+# CPP_FILES := $(wildcard *.cpp)
+# OBJS := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
 # automatically create lists of the sources and objects
 LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
@@ -119,7 +161,9 @@ L_INC := $(foreach lib,$(filter %/, $(wildcard $(LIBRARYPATH)/*/)), -I$(lib))
 SOURCES := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) $(INO_FILES:.ino=.o) $(TC_FILES:.c=.o) $(TCPP_FILES:.cpp=.o) $(LC_FILES:.c=.o) $(LCPP_FILES:.cpp=.o)
 OBJS := $(foreach src,$(SOURCES), $(BUILDDIR)/$(src))
 
-all: hex
+# the actual makefile rules (all .o files built by GNU make's default implicit rules)
+
+all: $(TARGET).hex
 
 build: $(TARGET).elf
 
@@ -148,14 +192,17 @@ $(BUILDDIR)/%.o: %.ino
 	@mkdir -p "$(dir $@)"
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(L_INC) -o "$@" -x c++ -include Arduino.h -c "$<"
 
-$(TARGET).elf: $(OBJS) $(LDSCRIPT)
+$(TARGET).elf: $(OBJS) $(LD_PATH)
 	@echo -e "[LD]\t$@"
-	@$(CC) $(LDFLAGS) -o "$@" $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.hex: %.elf
-	@echo -e "[HEX]\t$@"
-	@$(SIZE) "$<"
-	@$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
+	$(SIZE) $<
+	$(OBJCOPY) -O ihex -R .eeprom $< $@
+# ifneq (,$(wildcard $(TOOLSPATH)))
+# 	$(TOOLSPATH)/teensy_post_compile -file=$(basename $@) -path=$(shell pwd) -tools=$(TOOLSPATH)
+# 	-$(TOOLSPATH)/teensy_reboot
+# endif
 
 # compiler generated dependency info
 -include $(OBJS:.o=.d)
@@ -164,3 +211,5 @@ clean:
 	@echo Cleaning...
 	@rm -rf "$(BUILDDIR)"
 	@rm -f "$(TARGET).elf" "$(TARGET).hex"
+# clean:
+# 	rm -f *.o *.d $(TARGET).elf $(TARGET).hex

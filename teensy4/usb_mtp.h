@@ -28,31 +28,49 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
+#pragma once
 
-extern "C" int main(void)
-{
-#ifdef USING_MAKEFILE
+#include "usb_desc.h"
 
-	// To use Teensy 4.0 without Arduino, simply put your code here.
-	// For example:
+#if defined(MTP_INTERFACE)
 
-	pinMode(13, OUTPUT);
-	while (1) {
-		digitalWriteFast(13, HIGH);
-		delay(500);
-		digitalWriteFast(13, LOW);
-		delay(500);
-	}
+#include <inttypes.h>
 
-
-#else
-	// Arduino's main() function just calls setup() and loop()....
-	setup();
-	while (1) {
-		loop();
-		yield();
-	}
+// C language implementation
+#ifdef __cplusplus
+extern "C" {
 #endif
-}
+void usb_mtp_configure(void);
+int usb_mtp_recv(void *buffer, uint32_t timeout);
+int usb_mtp_available(void);
+int usb_mtp_send(const void *buffer, uint32_t len, uint32_t timeout);
+int usb_mtp_rxSize(void);
+int usb_mtp_txSize(void);
 
+extern uint32_t mtp_txEventCount;
+extern volatile uint8_t usb_mtp_status;
+
+#ifdef __cplusplus
+}
+#endif
+
+
+// C++ interface
+#ifdef __cplusplus
+class usb_mtp_class
+{
+public:
+	int available(void) {return usb_mtp_available(); }
+	int recv(void *buffer, uint32_t timeout) { return usb_mtp_recv(buffer, timeout); }
+	int send(const void *buffer, uint32_t len, uint32_t timeout) { return usb_mtp_send(buffer, len, timeout); }
+    int rxSize(void) {return usb_mtp_rxSize(); }
+    int txSize(void) {return usb_mtp_txSize(); }
+
+    uint32_t txEventCount() { return mtp_txEventCount; }
+};
+
+extern usb_mtp_class mtp;
+
+#endif // __cplusplus
+
+#endif // MTP_INTERFACE
